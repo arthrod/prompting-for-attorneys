@@ -1,0 +1,13 @@
+{
+  "lock": false,
+  "tasks": {
+    "test": "deno test --no-config --allow-read ratelimit_test.ts course_test.ts"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": false,
+    "types": ["https://www.val.town/types/valtown.d.ts"],
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns", "deno.unstable"]
+  },
+  "node_modules_dir": false
+}
