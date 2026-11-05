@@ -30,4 +30,10 @@ Deno.test("the bundle still has the ten lessons and the live try-it wiring", asy
   }
   const base = await Deno.readTextFile(new URL("./css/base.css", import.meta.url));
   assertEquals(base.includes("#4A4A47"), false);
+
+  const server = await Deno.readTextFile(new URL("./main.http.ts", import.meta.url));
+  assertEquals(server.includes("max_completion_tokens"), true);
+  assertEquals(server.includes("max_tokens"), false);
+  assertEquals(server.includes("https://esm.town/v/std/openai"), true);
+  assertEquals(server.includes("sk-"), false);
 });

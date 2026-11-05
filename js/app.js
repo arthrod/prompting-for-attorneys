@@ -143,6 +143,12 @@ ${next ? `<a class="next" href="#/${next.slug}"><span class="mono">Lesson ${pad(
   };
 }
 
-function route() { const h = location.hash.replace(/^#\/?/, ''); h ? lesson(h) : home(); }
+function route() {
+  const path = location.pathname.replace(/^\/+|\/+$/g, '');
+  if (location.hash === '#/' || location.hash === '#') return home();
+  const fromHash = location.hash.replace(/^#\/?/, '');
+  const slug = fromHash || (L.some(l => l.slug === path) ? path : '');
+  slug ? lesson(slug) : home();
+}
 addEventListener('hashchange', route); route();
 })();

@@ -4,6 +4,7 @@ import { Hono } from "npm:hono@4.13.12";
 import { readFile, serveFile } from "https://esm.town/v/std/utils/index.ts";
 import { OpenAI } from "https://esm.town/v/std/openai";
 import { createLimiter, LIMITS } from "./ratelimit.ts";
+import { renderPage } from "./page.ts";
 
 const SYSTEM =
   "You are assisting a lawyer who is practising prompting techniques. Answer the prompt directly and professionally. Do not add disclaimers about seeking legal counsel.";
@@ -68,15 +69,24 @@ app.post("/api/complete", async (c) => {
   }
   // Length only. The prompt itself is not logged or stored.
   console.log("[complete] chars=", prompt.length);
-  const completion = await openai.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: "system", content: SYSTEM },
-      { role: "user", content: prompt },
-    ],
-    max_tokens: 600,
-  });
-  const text = completion.choices[0]?.message?.content?.trim() ?? "";
+  let text = "";
+  try {
+    // Cap the completion so one try-it cannot spend the shared
+    // std/openai quota on a long answer.
+    const completion = await openai.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: SYSTEM },
+        { role: "user", content: prompt },
+      ],
+      max_completion_tokens: 1200,
+      reasoning_effort: "minimal",
+    });
+    text = completion.choices[0]?.message?.content?.trim() ?? "";
+  } catch (err) {
+    console.log("[complete] model error", err instanceof Error ? err.message : "unknown");
+    return c.json({ error: "The model could not be reached." }, 502);
+  }
   if (!text) return c.json({ error: "The model returned no text." }, 502);
   return c.json({ text });
 });
@@ -86,7 +96,28 @@ for (const prefix of ["/css/*", "/js/*", "/fonts/*"]) {
     isSafeAssetPath(c.req.path) ? serveFile(c.req.path, import.meta.url) : c.text("Forbidden", 403));
 }
 
-app.get("/", async (c) => c.html(await readFile("/index.html", import.meta.url)));
-app.get("/index.html", async (c) => c.html(await readFile("/index.html", import.meta.url)));
+async function htmlPage(slug: string | null): Promise<string | null> {
+  const [indexHtml, lessonsSrc] = await Promise.all([
+    readFile("/index.html", import.meta.url),
+    readFile("/js/lessons.js", import.meta.url),
+  ]);
+  return renderPage(indexHtml, lessonsSrc, slug);
+}
+
+app.get("/", async (c) => {
+  const html = await htmlPage(null);
+  return c.html(html ?? "");
+});
+app.get("/index.html", async (c) => {
+  const html = await htmlPage(null);
+  return c.html(html ?? "");
+});
+app.get("/:slug", async (c) => {
+  const slug = c.req.param("slug");
+  if (!slug || slug.includes(".")) return c.text("Not found", 404);
+  const html = await htmlPage(slug);
+  if (!html) return c.text("Not found", 404);
+  return c.html(html);
+});
 
 export default app.fetch;

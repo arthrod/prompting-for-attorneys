@@ -1,6 +1,6 @@
 # Prompting for attorneys
 
-Ten short lessons on prompting techniques for lawyers. Static pages, hash routes (`#/persona` and the rest), and a try-it box that calls this Val Town HTTP val.
+Ten short lessons on prompting techniques for lawyers. The overview is `/`. Each lesson is also a path (`/persona` and the rest) and a hash (`#/persona`). The try-it box calls this Val Town HTTP val.
 
 The lesson text stays in `js/lessons.js`. This file does not repeat it.
 

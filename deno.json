@@ -1,7 +1,7 @@
 {
   "lock": false,
   "tasks": {
-    "test": "deno test --no-config --allow-read ratelimit_test.ts course_test.ts"
+    "test": "deno test --no-config --allow-read ratelimit_test.ts course_test.ts page_test.ts"
   },
   "compilerOptions": {
     "strict": true,
