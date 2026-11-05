@@ -80,14 +80,14 @@ app.post("/api/complete", async (c) => {
         { role: "user", content: prompt },
       ],
       max_completion_tokens: 1200,
-      reasoning_effort: "minimal",
+      reasoning_effort: "none",
     });
     text = completion.choices[0]?.message?.content?.trim() ?? "";
   } catch (err) {
     console.log("[complete] model error", err instanceof Error ? err.message : "unknown");
-    return c.json({ error: "The model could not be reached." }, 502);
+    return c.json({ error: "The model could not be reached." }, 500);
   }
-  if (!text) return c.json({ error: "The model returned no text." }, 502);
+  if (!text) return c.json({ error: "The model returned no text." }, 500);
   return c.json({ text });
 });
 
