@@ -38,10 +38,12 @@ Deno.test("the served pages list every lesson and both panes", async () => {
   if (!home) throw new Error("home page missing");
   for (const title of TITLES) assertEquals(home.includes(title), true, title);
   assertEquals(home.includes('href="/persona"'), true);
+  assertEquals(home.includes('class="brand" href="https://arthur.law/"'), true);
 
   const lesson = renderPage(index, src, "persona");
   if (!lesson) throw new Error("lesson page missing");
   assertEquals(lesson.includes("Give the model a role"), true);
+  assertEquals(lesson.includes('class="brand" href="https://arthur.law/"'), true);
   assertEquals(lesson.includes('class="pane without"'), true);
   assertEquals(lesson.includes('class="pane with"'), true);
   assertEquals(lesson.includes(">Without<"), true);
