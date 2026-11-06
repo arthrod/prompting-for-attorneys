@@ -5,6 +5,7 @@ import { readFile, serveFile } from "https://esm.town/v/std/utils/index.ts";
 import { OpenAI } from "https://esm.town/v/std/openai";
 import { createLimiter, LIMITS } from "./ratelimit.ts";
 import { renderPage } from "./page.ts";
+import { reasoningParams } from "./reasoning.ts";
 
 const SYSTEM =
   "You are assisting a lawyer who is practising prompting techniques. Answer the prompt directly and professionally. Do not add disclaimers about seeking legal counsel.";
@@ -80,7 +81,7 @@ app.post("/api/complete", async (c) => {
         { role: "user", content: prompt },
       ],
       max_completion_tokens: 1200,
-      reasoning_effort: "none",
+      ...reasoningParams(MODEL),
     });
     text = completion.choices[0]?.message?.content?.trim() ?? "";
   } catch (err) {
