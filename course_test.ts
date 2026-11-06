@@ -31,6 +31,11 @@ Deno.test("the bundle still has the ten lessons and the live try-it wiring", asy
   const base = await Deno.readTextFile(new URL("./css/base.css", import.meta.url));
   assertEquals(base.includes("#4A4A47"), false);
 
+  const readme = await Deno.readTextFile(new URL("./README.md", import.meta.url));
+  assertEquals(readme.includes("https://arthrod--743c307ed96511f1a2af1607ee4eb77e.web.val.run/"), true);
+  assertEquals(readme.includes("reasoning.ts"), true);
+  assertEquals(readme.includes("deno test"), true);
+
   const server = await Deno.readTextFile(new URL("./main.http.ts", import.meta.url));
   assertEquals(server.includes("max_completion_tokens"), true);
   assertEquals(server.includes("max_tokens"), false);
