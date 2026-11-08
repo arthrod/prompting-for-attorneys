@@ -3,5 +3,6 @@
 .ftr .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px 32px;align-items:flex-start}
 .ftr .mono{color:var(--on-dark-faint)}
 .ftr p{color:var(--on-dark-muted);font-size:var(--fs-xs);max-width:70ch;line-height:1.55}
-.ftr .wm{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.06em}
-.ftr .wm i{font-style:normal;opacity:.45}
+.ftr .wm{display:inline-block;font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em;color:var(--on-dark);border-bottom:2px solid transparent;transition:border-color var(--t-fast)}
+.ftr .wm:hover{color:var(--on-dark);border-bottom-color:var(--mark)}
+.ftr .wm:focus-visible{outline:2px solid var(--mark);outline-offset:3px}

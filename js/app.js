@@ -113,7 +113,7 @@ ${l.aside ? `<div class="aside"><span class="mono">Field note</span><span>${esc(
 <div class="tryfoot">
 <div class="opts-row">
 <div class="along" role="group" aria-label="Run alongside"><span class="mono">Run alongside</span><div class="segc"><button class="aopt" data-along="weak" aria-pressed="true">Weak</button><button class="aopt" data-along="strong" aria-pressed="false">Strong</button></div></div>
-<div class="along" role="group" aria-label="Model"><span class="mono">Model</span><div class="segc"><button class="mopt" data-model="${MODELS[0].id}" aria-pressed="true">${MODELS[0].name}</button><button class="mopt" data-model="${MODELS[1].id}" aria-pressed="false">${MODELS[1].name}</button><button class="mopt" data-model="both" aria-pressed="false">Both</button></div></div>
+<div class="along" role="group" aria-label="Model"><span class="mono">Model</span><div class="segc">${MODELS.map((m, k) => `<button class="mopt" data-model="${m.id}" aria-pressed="${k === 0}">${m.name}</button>`).join('')}</div></div>
 </div>
 <div class="tryact"><button class="btn ghost" id="clear">Clear</button><button class="btn ghost" id="copy">Copy</button><button class="btn" id="run">Run →</button></div>
 </div>
@@ -179,9 +179,10 @@ ${lessonList(slug)}
   // try it: the textarea, what it holds, and what runs alongside it
   const ta = document.getElementById('ta');
   const which = () => { const v = ta.value.trim(); return v === weakText.trim() ? 'weak' : v === strongText.trim() ? 'strong' : v ? 'custom' : 'empty'; };
-  // along: the companion prompt ('weak' | 'strong' | ''); model: one id or 'both'
+  // along: the companion prompt ('weak' | 'strong' | ''); model: one MODELS id
   let along = 'weak', model = pref('asr-prompting-model', MODELS[0].id);
-  const runs = () => { const w = which(); const prompts = 1 + (along && along !== w ? 1 : 0), models = model === 'both' ? 2 : 1; return prompts * models; };
+  if (!MODELS.some(x => x.id === model)) model = MODELS[0].id;
+  const runs = () => { const w = which(); return 1 + (along && along !== w ? 1 : 0); };
   const paint = () => {
     const w = which();
     document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.load === w)));
@@ -223,10 +224,10 @@ ${lessonList(slug)}
     const run = document.getElementById('run'), resp = document.getElementById('resp'), w = which();
     const other = along && along !== w ? (along === 'weak' ? weakText : strongText) : '';
     const prompts = other ? [[label(w), p], [label(along), other]] : [[label(w), p]];
-    const models = model === 'both' ? MODELS : MODELS.filter(x => x.id === model);
-    const jobs = []; prompts.forEach(([t, q]) => models.forEach(mdl => jobs.push({ t, q, mdl })));
+    const mdl = MODELS.find(x => x.id === model) || MODELS[0];
+    const jobs = prompts.map(([t, q]) => ({ t, q, mdl }));
     run.disabled = true;
-    resp.classList.add('show'); resp.classList.toggle('pair', prompts.length > 1 || models.length > 1); resp.dataset.cols = String(models.length > 1 ? 2 : prompts.length);
+    resp.classList.add('show'); resp.classList.toggle('pair', prompts.length > 1); resp.dataset.cols = String(prompts.length);
     resp.innerHTML = jobs.map((j, k) => column('r' + k, j.t, j.mdl.name, j.q)).join('');
     // one after the other: the shared quota allows four calls a minute across every visitor
     for (let k = 0; k < jobs.length; k++) await ask(document.getElementById('r' + k), jobs[k].q, jobs[k].mdl.id);

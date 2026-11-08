@@ -42,7 +42,9 @@ html[data-measure="full"] .why p{max-width:none}
 .aopt:hover:not([disabled]),.mopt:hover{background:var(--mark);color:var(--mark-text)}
 .aopt[aria-pressed="true"],.mopt[aria-pressed="true"]{background:var(--ink);color:var(--on-dark)}
 .aopt[aria-pressed="true"]::before,.mopt[aria-pressed="true"]::before{content:"✓ ";color:var(--mark-on-dark)}
-.aopt[disabled]{opacity:.38;cursor:not-allowed}
+/* the option already in the box: same background as its neighbours, only the label fades */
+.aopt[disabled]{color:color-mix(in srgb, var(--muted) 55%, var(--surface));cursor:not-allowed}
+.aopt[disabled]::before{content:none}
 .aopt:focus-visible,.mopt:focus-visible{outline:2px solid var(--ink);outline-offset:-3px}
 .trynote{display:block;color:var(--muted);font-size:12px;letter-spacing:.06em;padding:0 18px 14px;text-transform:none}
 /* responses: one column, or two side by side when a companion ran */
