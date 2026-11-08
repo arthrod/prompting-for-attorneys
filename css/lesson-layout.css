@@ -1,7 +1,21 @@
-/* lesson layout */
-.lesson{display:grid;grid-template-columns:240px minmax(0,1fr);gap:clamp(32px,5vw,80px);padding-top:clamp(28px,4vw,56px);padding-bottom:120px}
-.rail{position:sticky;top:84px;align-self:start}
-.rail .mono{color:var(--muted);margin-bottom:14px;display:block}
+/* lesson layout
+   Two rail modes, set on <html data-rail>:
+   - mini (default): the lesson list is a strip of numbered squares fixed in
+     the left gutter, outside the page column, and the article takes the full
+     page width, aligned with the header. Hover or keyboard focus opens the
+     strip as a flyout; "Pin" widens the grid for good.
+   - full: the 240px list sits beside the article, as before.
+   The reading measure of prose stays (56ch / 62ch); the compare panes and the
+   try-it box are what use the width. */
+.lesson{display:grid;grid-template-columns:minmax(0,1fr);gap:0;padding-top:clamp(28px,4vw,56px);padding-bottom:120px}
+html[data-rail="full"] .lesson{grid-template-columns:240px minmax(0,1fr);gap:clamp(32px,5vw,80px)}
+
+/* --- shared rail parts --- */
+.rail{align-self:start}
+.rail-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.rail-head .mono{color:var(--muted);display:flex;align-items:center}
+.rail-pin{color:var(--muted);font-family:var(--mono);font-weight:var(--mono-weight);text-transform:uppercase;font-size:11px;letter-spacing:.08em;padding:4px 0;transition:color var(--t-fast)}
+.rail-pin:hover,.rail-pin:focus-visible{color:var(--ink)}
 .rail ol{list-style:none;border-top:1px solid var(--faint)}
 .rail li a{display:grid;grid-template-columns:28px 1fr 14px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--faint);font-size:15px;color:var(--muted);transition:color var(--t-fast)}
 .rail li a:hover{color:var(--ink)}
@@ -10,13 +24,63 @@
 .rail li.done a .d{background:var(--mark);border-color:var(--mark)}
 .rail li.cur a{color:var(--ink);font-weight:600}
 .rail li.cur a .d{background:var(--ink)}
-.rail .back{margin-top:20px;display:inline-block;color:var(--muted)}
+.rail .back{margin-top:20px;display:inline-flex;align-items:center;gap:8px;color:var(--muted)}
 .rail .back:hover{color:var(--ink)}
-.art{max-width:760px}
+.rail a:focus-visible,.rail button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+
+/* --- full mode: the list beside the article --- */
+html[data-rail="full"] .rail{position:sticky;top:84px}
+
+/* --- mini mode: the strip in the left gutter, a flyout on hover or focus --- */
+html[data-rail="mini"] .rail{
+  position:fixed;top:84px;z-index:15;width:36px;
+  left:max(8px, calc(50vw - var(--page-max) / 2 + var(--px) - 52px));
+  background:var(--bg);border:1px solid transparent;
+  transition:width var(--t-mid),padding var(--t-mid),border-color var(--t-fast),box-shadow var(--t-fast);
+}
+html[data-rail="mini"] .rail-head{margin-bottom:8px;min-height:24px}
+html[data-rail="mini"] .rail-head>span,html[data-rail="mini"] .rail .lbl,html[data-rail="mini"] .rail li a .d{display:none}
+html[data-rail="mini"] .rail-pin{width:36px;text-align:center;font-size:0}
+html[data-rail="mini"] .rail-pin::before{content:"≡";font-size:15px;line-height:24px;display:block}
+html[data-rail="mini"] .rail ol{border-top:0;display:grid;gap:4px}
+html[data-rail="mini"] .rail li a{grid-template-columns:1fr;gap:0;padding:0;border:0;width:28px;height:28px;margin:0 4px;align-content:center;justify-items:center;border:1px solid var(--ink);color:var(--ink);background:var(--surface);transition:background var(--t-fast),color var(--t-fast)}
+html[data-rail="mini"] .rail li a:hover{background:var(--mark)}
+html[data-rail="mini"] .rail li.done a{background:var(--mark);border-color:var(--mark)}
+html[data-rail="mini"] .rail li.cur a{background:var(--ink);color:var(--on-dark);border-color:var(--ink)}
+html[data-rail="mini"] .rail li a .n{font-size:11px;letter-spacing:.02em}
+html[data-rail="mini"] .rail .back{margin:12px 0 0;width:36px;justify-content:center;color:var(--muted)}
+/* the flyout */
+html[data-rail="mini"] .rail:hover,html[data-rail="mini"] .rail:focus-within{width:240px;padding:12px 14px 14px;border-color:var(--ink);box-shadow:var(--lift)}
+html[data-rail="mini"] .rail:hover .rail-head>span,html[data-rail="mini"] .rail:focus-within .rail-head>span,
+html[data-rail="mini"] .rail:hover .lbl,html[data-rail="mini"] .rail:focus-within .lbl,
+html[data-rail="mini"] .rail:hover li a .d,html[data-rail="mini"] .rail:focus-within li a .d{display:inline-block}
+html[data-rail="mini"] .rail:hover .rail-pin,html[data-rail="mini"] .rail:focus-within .rail-pin{width:auto;font-size:11px}
+html[data-rail="mini"] .rail:hover .rail-pin::before,html[data-rail="mini"] .rail:focus-within .rail-pin::before{display:none}
+html[data-rail="mini"] .rail:hover ol,html[data-rail="mini"] .rail:focus-within ol{display:block;border-top:1px solid var(--faint)}
+html[data-rail="mini"] .rail:hover li a,html[data-rail="mini"] .rail:focus-within li a{grid-template-columns:28px 1fr 14px;gap:10px;width:auto;height:auto;margin:0;padding:10px 0;border:0;border-bottom:1px solid var(--faint);background:transparent;color:var(--muted);justify-items:stretch}
+html[data-rail="mini"] .rail:hover li a:hover,html[data-rail="mini"] .rail:focus-within li a:hover{color:var(--ink)}
+html[data-rail="mini"] .rail:hover li.cur a,html[data-rail="mini"] .rail:focus-within li.cur a{color:var(--ink);background:transparent}
+html[data-rail="mini"] .rail:hover li.done a,html[data-rail="mini"] .rail:focus-within li.done a{background:transparent}
+html[data-rail="mini"] .rail:hover li a .n,html[data-rail="mini"] .rail:focus-within li a .n{font-size:12px;letter-spacing:.06em}
+html[data-rail="mini"] .rail:hover .back,html[data-rail="mini"] .rail:focus-within .back{width:auto;justify-content:flex-start;margin-top:20px}
+/* room for the strip: where the margin outside the page column is under 60px, the
+   page column (header, article, footer alike) shifts right by the difference, so
+   the strip keeps a 16px gap to the text and the header stays aligned */
+@media (min-width:901px){
+html[data-rail="mini"] body.in-lesson .wrap{padding-left:calc(var(--px) + clamp(0px, 60px - (100vw - var(--page-max)) / 2, 60px))}
+html[data-rail="mini"] .rail{left:calc(max(0px, (100vw - var(--page-max)) / 2) + var(--px) + clamp(0px, 60px - (100vw - var(--page-max)) / 2, 60px) - 52px)}
+/* data-railpos="center": the strip sits at the vertical middle of the viewport */
+html[data-rail="mini"][data-railpos="center"] .rail{top:50%;transform:translateY(-50%)}
+}
+@media (prefers-reduced-motion:reduce){html[data-rail="mini"] .rail{transition:none}}
+
+/* --- article --- */
+.art{max-width:none;min-width:0}
+html[data-rail="full"] .art{max-width:760px}
 .art .eyebrow{display:flex;gap:18px;flex-wrap:wrap}
 .art .eyebrow span+span::before{content:"·";margin-right:18px;color:var(--faint)}
-.art h1{font-size:var(--fs-display);font-weight:var(--display-weight);line-height:1.02;letter-spacing:-.025em}
-.art .one{font-size:var(--fs-lede);line-height:1.5;color:var(--ink-soft);margin-top:22px;max-width:56ch;padding-left:20px;border-left:3px solid var(--mark)}
+.art h1{font-size:var(--fs-display);font-weight:var(--display-weight);line-height:1.02;letter-spacing:-.025em;max-width:20ch}
+.art .one{font-size:var(--fs-lede);line-height:1.5;color:var(--ink-soft);margin-top:22px;max-width:64ch;padding-left:20px;border-left:3px solid var(--mark)}
 .sec{margin-top:clamp(44px,6vw,72px)}
 .sec>.lab{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .sec>.lab .mono{color:var(--ink)}

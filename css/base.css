@@ -1,6 +1,6 @@
 /* Contrast adaptations over the DS tokens: darker secondary ink, no sub-12px labels, body at full ink. */
 :root{--fs-body:18px;--fs-label:12px;--fs-micro:12px;--px:clamp(20px,5vw,56px)}
-html[data-size="large"]{--fs-body:20px;--fs-label:13px;--fs-micro:13px}
+/* text size steps are set inline on <html> by app.js (--fs-body, --fs-label, --fs-micro) */
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--ink);font-family:var(--ff);font-size:var(--fs-body);line-height:1.6;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased;text-wrap:pretty}

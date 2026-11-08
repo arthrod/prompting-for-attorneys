@@ -1,16 +1,27 @@
 /* header */
 .hdr{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--faint)}
-.hdr .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:60px}
+.hdr .wrap{display:flex;align-items:center;justify-content:flex-start;gap:28px;height:60px}
 .brand{display:flex;align-items:baseline;gap:14px;min-width:0}
-.brand .wm{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.06em;white-space:nowrap}
-.brand .wm i{font-style:normal;color:var(--muted);opacity:.7}
-.brand .sub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand .wm{font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:.04em;white-space:nowrap;color:var(--ink)}
+.brand .sub{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color var(--t-fast)}
+.brand .sub:hover,.brand .wm:hover{color:var(--ink);background-image:linear-gradient(var(--mark),var(--mark));background-repeat:no-repeat;background-size:100% 2px;background-position:0 100%}
+.brand a:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .hright{display:flex;align-items:center;gap:14px}
+.hcontact{margin-left:auto;display:inline-flex;align-items:center;gap:8px;color:var(--ink);white-space:nowrap;padding:6px 0;border-bottom:2px solid transparent;transition:border-color var(--t-fast)}
+.hcontact .arr{color:var(--mark-text);background:var(--mark);padding:0 6px}
+.hcontact:hover{border-bottom-color:var(--mark)}
+.hcontact:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
 .prog{display:flex;gap:3px}
-.prog b{display:block;width:14px;height:8px;border:1px solid var(--ink);background:transparent}
-.prog b.on{background:var(--mark)}
-.prog b.cur{background:var(--ink)}
+.prog a{display:block;width:14px;height:8px;border:1px solid var(--ink);background:transparent;transition:background var(--t-fast),transform var(--t-fast)}
+.prog a:hover{background:var(--mark);transform:translateY(-1px)}
+.prog a.on{background:var(--mark)}
+.prog a.cur{background:var(--ink)}
+.prog a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .sizes{display:flex;border:1px solid var(--ink)}
 .sizes button{padding:4px 9px;font-family:var(--mono);font-weight:600;font-size:12px;letter-spacing:.04em;transition:background var(--t-fast)}
 .sizes button+button{border-left:1px solid var(--ink)}
-.sizes button.on{background:var(--ink);color:var(--on-dark)}
+/* tone deepens with each click away from the default: paper, then mark, then ink */
+.sizes button[data-level="1"]{background:var(--mark);color:var(--mark-text)}
+.sizes button[data-level="2"]{background:var(--ink);color:var(--on-dark)}
+.sizes button:disabled{cursor:default}
+.sizes button:hover:not(:disabled):not([data-level="1"]):not([data-level="2"]){background:var(--faint)}

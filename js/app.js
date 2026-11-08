@@ -1,20 +1,37 @@
 (() => {
-const L = window.LESSONS, KEY = 'asr-prompting-progress', SIZE = 'asr-prompting-size';
+const L = window.LESSONS, KEY = 'asr-prompting-progress', SIZE = 'asr-prompting-size', RAIL = 'asr-prompting-rail';
 const app = document.getElementById('app');
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const pad = n => String(n).padStart(2,'0');
+const MODELS = [{ id: 'glm-5.3-flash', name: 'GLM-5.3-Flash' }, { id: 'glm-5.3-flashx-legal', name: 'GLM-5.3-FlashX-Legal' }];
+const words = s => s.trim() ? s.trim().split(/\s+/).length : 0;
 let state = {}; try { state = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch(e) {}
 const save = () => localStorage.setItem(KEY, JSON.stringify(state));
 const done = slug => !!(state[slug] && state[slug].done);
 const total = () => L.filter(l => done(l.slug)).length;
+const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch(e) { return d; } };
+const setPref = (k, v) => { try { localStorage.setItem(k, v); } catch(e) {} };
 
-// text size
-const applySize = s => { document.documentElement.dataset.size = s; document.querySelectorAll('.sizes button').forEach(b => b.classList.toggle('on', b.dataset.size === s)); };
-applySize(localStorage.getItem(SIZE) || 'normal');
-document.querySelectorAll('.sizes button').forEach(b => b.onclick = () => { localStorage.setItem(SIZE, b.dataset.size); applySize(b.dataset.size); });
+// text size: five steps, two clicks down and two up from the default (18px); the
+// A− and A+ buttons deepen in tone with each click away from the default
+const STEPS = [[15, 12], [16, 12], [18, 12], [20, 13], [22, 13]], DEFAULT_STEP = 2;
+let step = DEFAULT_STEP; { const v = parseInt(pref(SIZE, ''), 10); if (v >= 0 && v < STEPS.length) step = v; else if (pref(SIZE, '') === 'large') step = 3; }
+const applySize = () => {
+  const [body, label] = STEPS[step], h = document.documentElement;
+  h.style.setProperty('--fs-body', body + 'px'); h.style.setProperty('--fs-label', label + 'px'); h.style.setProperty('--fs-micro', label + 'px');
+  h.dataset.size = step === DEFAULT_STEP ? 'normal' : step > DEFAULT_STEP ? 'large' : 'small';
+  document.querySelectorAll('.sizes button').forEach(b => { const d = +b.dataset.step, level = Math.max(0, d * (step - DEFAULT_STEP)); b.dataset.level = String(level); b.disabled = (d < 0 && step === 0) || (d > 0 && step === STEPS.length - 1); b.setAttribute('aria-label', `${d < 0 ? 'Smaller' : 'Larger'} text (now ${body}px)`); b.title = b.getAttribute('aria-label'); });
+};
+applySize();
+document.querySelectorAll('.sizes button').forEach(b => b.onclick = () => { step = Math.max(0, Math.min(STEPS.length - 1, step + +b.dataset.step)); setPref(SIZE, String(step)); applySize(); });
+
+// lesson rail: 'mini' (a strip of numbered squares in the left gutter, the
+// article takes the full page width) or 'full' (the 240px list beside the article)
+const applyRail = m => { document.documentElement.dataset.rail = m; };
+applyRail(pref(RAIL, 'mini'));
 
 function renderProg(cur) {
-  document.getElementById('prog').innerHTML = L.map(l => `<b class="${done(l.slug)?'on':''}${l.slug===cur?' cur':''}" title="${pad(L.indexOf(l)+1)} ${esc(l.title)}"></b>`).join('');
+  document.getElementById('prog').innerHTML = L.map((l,k) => `<a class="${done(l.slug)?'on':''}${l.slug===cur?' cur':''}" href="#/${l.slug}" title="${pad(k+1)} ${esc(l.title)}" aria-label="Lesson ${pad(k+1)}: ${esc(l.title)}${done(l.slug)?', done':''}"${l.slug===cur?' aria-current="page"':''}></a>`).join('');
 }
 
 // [[text|n]] → <mark>
@@ -23,8 +40,12 @@ function marks(s) {
 }
 const plain = s => s.replace(/\[\[([\s\S]*?)\|\d+\]\]/g, '$1');
 
+// the lesson list, shared by the desktop rail and the mobile sheet
+const lessonList = slug => `<ol>${L.map((x,k) => `<li class="${x.slug===slug?'cur':''}${done(x.slug)?' done':''}"><a href="#/${x.slug}"${x.slug===slug?' aria-current="page"':''} aria-label="Lesson ${pad(k+1)}: ${esc(x.short)}${done(x.slug)?', done':''}"><span class="n">${pad(k+1)}</span><span class="lbl">${esc(x.short)}</span><span class="d" aria-hidden="true"></span></a></li>`).join('')}</ol>`;
+
 function home() {
   renderProg();
+  document.body.classList.remove('in-lesson');
   const n = total(), first = L.find(l => !done(l.slug)) || L[0];
   app.innerHTML = `
 <section class="hero">
@@ -46,14 +67,16 @@ function home() {
 function lesson(slug) {
   const i = L.findIndex(l => l.slug === slug); if (i < 0) return (location.hash = '#/');
   const l = L[i], prev = L[i-1], next = L[i+1], st = state[slug] || {};
+  const weakText = l.weak, strongText = plain(l.strong);
   renderProg(slug);
+  document.body.classList.add('in-lesson');
   window.scrollTo(0,0);
   app.innerHTML = `
 <div class="lesson">
-<aside class="rail">
-<span class="mono">/ Lessons · ${pad(total())} of ${pad(L.length)} done</span>
-<ol>${L.map((x,k) => `<li class="${x.slug===slug?'cur':''}${done(x.slug)?' done':''}"><a href="#/${x.slug}"><span class="n">${pad(k+1)}</span><span>${esc(x.short)}</span><span class="d"></span></a></li>`).join('')}</ol>
-<a class="back mono" href="#/">← Overview</a>
+<aside class="rail" id="rail" aria-label="Lessons">
+<div class="rail-head"><span class="mono"><span class="sq"></span>/ Lessons</span><button class="rail-pin" id="railpin" type="button"></button></div>
+${lessonList(slug)}
+<a class="back mono" href="#/"><span class="arr">←</span><span class="lbl">Overview</span></a>
 </aside>
 <article class="art">
 <p class="eyebrow mono rise"><span><span class="sq"></span>Lesson ${pad(i+1)} of ${pad(L.length)}</span><span>${l.minutes} min</span>${done(slug)?'<span>Done</span>':''}</p>
@@ -66,8 +89,8 @@ function lesson(slug) {
 <section class="sec rise d4"><div class="lab"><span class="mono"><span class="sq"></span>/ Two prompts</span><span class="mono r">Tap a highlight</span></div>
 <div class="seg"><button class="on" data-show="without">Without</button><button data-show="with">With the technique</button></div>
 <div class="cmp" id="cmp" data-show="without">
-<div class="pane without"><div class="ph"><span class="mono">Without</span><span class="meta">${plain(l.weak).split(/\s+/).length} words</span></div><div class="prompt">${esc(l.weak)}</div></div>
-<div class="pane with"><div class="ph"><span class="mono">With the technique</span><span class="meta">${plain(l.strong).split(/\s+/).length} words · ${pad(l.notes.length)} changes</span></div><div class="prompt" id="strong">${marks(l.strong)}</div></div>
+<div class="pane without"><div class="ph"><span class="mono">Without</span><span class="meta">${words(weakText)} words</span></div><div class="prompt">${esc(l.weak)}</div></div>
+<div class="pane with"><div class="ph"><span class="mono">With the technique</span><span class="meta">${words(strongText)} words · ${pad(l.notes.length)} changes</span></div><div class="prompt" id="strong">${marks(l.strong)}</div></div>
 </div>
 <ol class="notes" id="notes">${l.notes.map((n,k) => `<li data-n="${k+1}"><span class="n">${pad(k+1)}</span><span>${esc(n)}</span></li>`).join('')}</ol>
 </section>
@@ -85,10 +108,17 @@ ${l.aside ? `<div class="aside"><span class="mono">Field note</span><span>${esc(
 
 <section class="sec"><div class="lab"><span class="mono"><span class="sq"></span>/ Try it</span><span class="mono r">Edit, then run</span></div>
 <div class="try">
-<div class="chips"><button class="chip" data-load="weak">Load weak prompt</button><button class="chip" data-load="strong">Load strong prompt</button><button class="chip" data-load="">Clear</button></div>
-<textarea id="ta" placeholder="Write your own prompt, or load one above and improve it." spellcheck="false">${esc(plain(l.strong))}</textarea>
-<div class="tryfoot"><span class="mono" id="trynote">Runs on a live model · responses are not legal advice</span><div style="display:flex;gap:8px"><button class="btn ghost" id="copy">Copy</button><button class="btn" id="run">Run →</button></div></div>
-<div class="resp" id="resp"><div class="rh"><span class="mono">Response</span><span class="mono" id="rmeta"></span></div><div class="rb" id="rb"></div></div>
+<div class="chips" role="group" aria-label="Load a prompt"><button class="chip" data-load="weak" aria-pressed="false">Load weak prompt</button><button class="chip" data-load="strong" aria-pressed="true">Load strong prompt</button></div>
+<textarea id="ta" placeholder="Write your own prompt, or load one above and improve it." spellcheck="false">${esc(strongText)}</textarea>
+<div class="tryfoot">
+<div class="opts-row">
+<div class="along" role="group" aria-label="Run alongside"><span class="mono">Run alongside</span><div class="segc"><button class="aopt" data-along="weak" aria-pressed="true">Weak</button><button class="aopt" data-along="strong" aria-pressed="false">Strong</button></div></div>
+<div class="along" role="group" aria-label="Model"><span class="mono">Model</span><div class="segc"><button class="mopt" data-model="${MODELS[0].id}" aria-pressed="true">${MODELS[0].name}</button><button class="mopt" data-model="${MODELS[1].id}" aria-pressed="false">${MODELS[1].name}</button><button class="mopt" data-model="both" aria-pressed="false">Both</button></div></div>
+</div>
+<div class="tryact"><button class="btn ghost" id="clear">Clear</button><button class="btn ghost" id="copy">Copy</button><button class="btn" id="run">Run →</button></div>
+</div>
+<p class="trynote mono" id="trynote">Runs on a live model · responses are not legal advice</p>
+<div class="resp" id="resp"></div>
 </div></section>
 
 <section class="sec"><div class="lab"><span class="mono"><span class="sq"></span>/ Further reading</span></div>
@@ -100,7 +130,29 @@ ${prev ? `<a class="prev" href="#/${prev.slug}"><span class="mono">← Lesson ${
 ${next ? `<a class="next" href="#/${next.slug}"><span class="mono">Lesson ${pad(i+2)} →</span><span class="tt">${esc(next.title)}</span></a>` : `<a class="next" href="#/"><span class="mono">Finish →</span><span class="tt">Back to overview</span></a>`}
 </nav>
 </article></div>
-<div class="mbar">${prev ? `<a href="#/${prev.slug}">← ${pad(i)}</a>` : `<a href="#/">← Home</a>`}<span class="c"><b>${pad(i+1)}</b>&nbsp;/ ${pad(L.length)}</span>${next ? `<a class="r" href="#/${next.slug}">${pad(i+2)} →</a>` : `<a class="r" href="#/">Finish →</a>`}</div>`;
+<div class="mbar">${prev ? `<a href="#/${prev.slug}">← ${pad(i)}</a>` : `<a href="#/">← Home</a>`}<button class="c" id="sheettog" type="button" aria-expanded="false" aria-controls="sheet">Lesson <b>${pad(i+1)}</b>&nbsp;/ ${pad(L.length)}<span class="up" aria-hidden="true">↑</span></button>${next ? `<a class="r" href="#/${next.slug}">${pad(i+2)} →</a>` : `<a class="r" href="#/">Finish →</a>`}</div>
+<div class="sheet-bd" id="sheetbd" hidden></div>
+<section class="sheet" id="sheet" aria-label="Lessons" hidden>
+<div class="sheet-head"><span class="mono"><span class="sq"></span>/ Lessons</span><a class="mono" href="#/">Overview →</a><button class="sheet-x" id="sheetx" type="button" aria-label="Close lesson list">↓</button></div>
+${lessonList(slug)}
+</section>`;
+
+  // rail: pin or collapse
+  const pin = document.getElementById('railpin');
+  const paintPin = () => { const mini = document.documentElement.dataset.rail === 'mini'; pin.textContent = mini ? 'Pin' : 'Collapse'; pin.title = mini ? 'Keep the lesson list open' : 'Collapse the list to a strip'; pin.setAttribute('aria-pressed', String(!mini)); };
+  paintPin();
+  pin.onclick = () => { const m = document.documentElement.dataset.rail === 'mini' ? 'full' : 'mini'; applyRail(m); setPref(RAIL, m); paintPin(); };
+  // the mini strip opens as a flyout on hover or focus; close it after a pick
+  document.querySelectorAll('#rail ol a').forEach(a => a.onclick = () => document.activeElement && document.activeElement.blur());
+
+  // mobile sheet
+  const sheet = document.getElementById('sheet'), bd = document.getElementById('sheetbd'), tog = document.getElementById('sheettog');
+  const openSheet = o => { sheet.hidden = !o; bd.hidden = !o; tog.setAttribute('aria-expanded', String(o)); document.body.classList.toggle('sheet-open', o); if (o) { const cur = sheet.querySelector('li.cur a'); cur && cur.focus(); } else tog.focus(); };
+  tog.onclick = () => openSheet(sheet.hidden);
+  bd.onclick = () => openSheet(false);
+  document.getElementById('sheetx').onclick = () => openSheet(false);
+  sheet.querySelectorAll('a').forEach(a => a.addEventListener('click', () => openSheet(false)));
+  document.onkeydown = e => { if (e.key === 'Escape' && !sheet.hidden) openSheet(false); };
 
   // highlight linking
   const sync = (n, on) => { document.querySelectorAll(`#strong mark[data-n="${n}"], #notes li[data-n="${n}"]`).forEach(e => e.classList.toggle('on', on)); };
@@ -111,34 +163,73 @@ ${next ? `<a class="next" href="#/${next.slug}"><span class="mono">Lesson ${pad(
   // mobile segmented
   document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b)); document.getElementById('cmp').dataset.show = b.dataset.show; });
   // quiz
+  const markDone = d => { document.querySelectorAll('#rail li, #sheet li').forEach((li, k) => { if (k % L.length === i) li.classList.toggle('done', d); }); };
   const answer = k => {
     const opts = document.querySelectorAll('.opt'); opts.forEach(o => { o.disabled = true; o.classList.toggle('right', +o.dataset.k === l.check.answer); o.classList.toggle('wrong', +o.dataset.k === k && k !== l.check.answer); });
     const ok = k === l.check.answer; document.getElementById('fbl').textContent = ok ? 'Correct' : 'Not quite'; document.getElementById('fbt').textContent = l.check.fb[k]; document.getElementById('fb').classList.add('show');
     state[slug] = Object.assign({}, state[slug], { answered: k, done: true }); save(); renderProg(slug);
     const m = document.getElementById('mark'); m.textContent = 'Completed ✓'; m.classList.add('ghost');
-    document.querySelectorAll('.rail li')[i].classList.add('done');
+    markDone(true);
   };
   document.querySelectorAll('.opt').forEach(o => o.onclick = () => answer(+o.dataset.k));
   if (typeof st.answered === 'number') answer(st.answered);
   // mark complete
-  document.getElementById('mark').onclick = () => { const d = !done(slug); state[slug] = Object.assign({}, state[slug], { done: d }); save(); renderProg(slug); const m = document.getElementById('mark'); m.textContent = d ? 'Completed ✓' : 'Mark complete'; m.classList.toggle('ghost', d); document.querySelectorAll('.rail li')[i].classList.toggle('done', d); };
-  // try it
+  document.getElementById('mark').onclick = () => { const d = !done(slug); state[slug] = Object.assign({}, state[slug], { done: d }); save(); renderProg(slug); const m = document.getElementById('mark'); m.textContent = d ? 'Completed ✓' : 'Mark complete'; m.classList.toggle('ghost', d); markDone(d); };
+
+  // try it: the textarea, what it holds, and what runs alongside it
   const ta = document.getElementById('ta');
-  document.querySelectorAll('.chip').forEach(c => c.onclick = () => { ta.value = c.dataset.load === 'weak' ? l.weak : c.dataset.load === 'strong' ? plain(l.strong) : ''; ta.focus(); });
+  const which = () => { const v = ta.value.trim(); return v === weakText.trim() ? 'weak' : v === strongText.trim() ? 'strong' : v ? 'custom' : 'empty'; };
+  // along: the companion prompt ('weak' | 'strong' | ''); model: one id or 'both'
+  let along = 'weak', model = pref('asr-prompting-model', MODELS[0].id);
+  const runs = () => { const w = which(); const prompts = 1 + (along && along !== w ? 1 : 0), models = model === 'both' ? 2 : 1; return prompts * models; };
+  const paint = () => {
+    const w = which();
+    document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.load === w)));
+    // the prompt already in the box cannot also run alongside itself; it fades, the other stays live
+    document.querySelectorAll('.aopt').forEach(b => { const same = b.dataset.along === w; b.disabled = same; b.setAttribute('aria-pressed', String(!same && b.dataset.along === along)); b.title = same ? 'This prompt is already in the box' : (b.dataset.along === along ? 'Click to run only the prompt in the box' : `Also run the ${b.dataset.along} prompt`); });
+    document.querySelectorAll('.mopt').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.model === model)));
+    const n = runs();
+    document.getElementById('trynote').textContent = (n > 1 ? `${n} runs, one after the other, count as ${n} practice tries` : 'Runs on a live model') + ' · responses are not legal advice';
+  };
+  const setAlong = a => { along = a; paint(); };
+  // loading the weak prompt pairs it with the strong one, and the other way round;
+  // a custom prompt keeps whatever was picked
+  const autoAlong = () => { const w = which(); if (w === 'weak') along = 'strong'; else if (w === 'strong') along = 'weak'; paint(); };
+  document.querySelectorAll('.chip').forEach(c => c.onclick = () => { ta.value = c.dataset.load === 'weak' ? weakText : strongText; ta.focus(); autoAlong(); });
+  document.getElementById('clear').onclick = () => { ta.value = ''; ta.focus(); paint(); };
+  // a pressed option toggles off (run the box alone); an unpressed one selects
+  document.querySelectorAll('.aopt').forEach(b => b.onclick = () => setAlong(along === b.dataset.along ? '' : b.dataset.along));
+  document.querySelectorAll('.mopt').forEach(b => b.onclick = () => { model = b.dataset.model; setPref('asr-prompting-model', model); paint(); });
+  ta.addEventListener('input', paint);
+  autoAlong();
   document.getElementById('copy').onclick = e => { navigator.clipboard && navigator.clipboard.writeText(ta.value); e.target.textContent = 'Copied'; setTimeout(() => e.target.textContent = 'Copy', 1200); };
-  document.getElementById('run').onclick = async () => {
-    const p = ta.value.trim(); if (!p) return;
-    const run = document.getElementById('run'), resp = document.getElementById('resp'), rb = document.getElementById('rb'), rm = document.getElementById('rmeta');
-    run.disabled = true; resp.classList.add('show'); rb.innerHTML = '<span class="spin"></span>Generating'; rm.textContent = '';
-    const t0 = Date.now();
+
+  const label = w => w === 'weak' ? 'Weak prompt' : w === 'strong' ? 'Strong prompt' : 'Your prompt';
+  const column = (id, title, sub, p) => `<div class="rcol" id="${id}"><div class="rh"><span><span class="mono">${title}</span><span class="mono rsub">${sub}</span></span><span class="mono rmeta">${words(p)} words in</span></div><div class="rb"><span class="spin"></span>Generating</div></div>`;
+  const ask = async (col, p, m) => {
+    const rb = col.querySelector('.rb'), rm = col.querySelector('.rmeta'), t0 = Date.now();
     try {
       // Practice instruction only. The val uses this same sentence and ignores any other system text.
-      const res = await fetch('/api/complete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ system: 'You are assisting a lawyer who is practising prompting techniques. Answer the prompt directly and professionally. Do not add disclaimers about seeking legal counsel.', prompt: p }) });
+      // `model` names the model asked for; the val falls back to its default until it routes by model.
+      const res = await fetch('/api/complete', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ system: 'You are assisting a lawyer who is practising prompting techniques. Answer the prompt directly and professionally. Do not add disclaimers about seeking legal counsel.', prompt: p, model: m }) });
       const data = await res.json().catch(() => ({}));
-      if (res.status === 429) { rb.textContent = 'Too many practice runs. Copy the prompt into your own assistant and try again in a minute.'; }
+      if (res.status === 429) { rb.textContent = 'Too many practice runs. Copy the prompt into your own assistant and try again in a minute.'; rm.textContent = 'limit'; }
       else if (!res.ok || typeof data.text !== 'string' || !data.text.trim()) throw new Error('empty');
-      else { rb.textContent = data.text; rm.textContent = `${((Date.now()-t0)/1000).toFixed(1)} s · ${data.text.split(/\s+/).length} words`; }
-    } catch (err) { rb.textContent = 'The model could not be reached. Copy the prompt into your own assistant instead.'; }
+      else { rb.textContent = data.text; rm.textContent = `${((Date.now()-t0)/1000).toFixed(1)} s · ${words(data.text)} words`; }
+    } catch (err) { rb.textContent = 'The model could not be reached. Copy the prompt into your own assistant instead.'; rm.textContent = 'error'; }
+  };
+  document.getElementById('run').onclick = async () => {
+    const p = ta.value.trim(); if (!p) return;
+    const run = document.getElementById('run'), resp = document.getElementById('resp'), w = which();
+    const other = along && along !== w ? (along === 'weak' ? weakText : strongText) : '';
+    const prompts = other ? [[label(w), p], [label(along), other]] : [[label(w), p]];
+    const models = model === 'both' ? MODELS : MODELS.filter(x => x.id === model);
+    const jobs = []; prompts.forEach(([t, q]) => models.forEach(mdl => jobs.push({ t, q, mdl })));
+    run.disabled = true;
+    resp.classList.add('show'); resp.classList.toggle('pair', prompts.length > 1 || models.length > 1); resp.dataset.cols = String(models.length > 1 ? 2 : prompts.length);
+    resp.innerHTML = jobs.map((j, k) => column('r' + k, j.t, j.mdl.name, j.q)).join('');
+    // one after the other: the shared quota allows four calls a minute across every visitor
+    for (let k = 0; k < jobs.length; k++) await ask(document.getElementById('r' + k), jobs[k].q, jobs[k].mdl.id);
     run.disabled = false;
   };
 }
